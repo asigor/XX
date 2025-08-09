@@ -106,7 +106,7 @@ namespace Msd81J2534Flasher
             // Set the DLL name in J2534Api runtime
             J2534Api.SetDllPath(dll);
 
-            int rc = J2534Api.PassThruOpen(IntPtr.Zero, ref devId);
+            int rc = J2534Api.PassThruOpen(IntPtr.Zero,  devId);
             if (rc != 0)
             {
                 Log($"PassThruOpen failed: {rc}");
@@ -118,7 +118,7 @@ namespace Msd81J2534Flasher
             uint proto = (cbProtocol.SelectedIndex == 0) ? J2534Api.ISO15765 : J2534Api.ISO9141;
             uint baud = (cbProtocol.SelectedIndex == 0) ? 500000u : 10400u;
             int ch = 0;
-            rc = J2534Api.PassThruConnect(devId, proto, 0, baud, ref ch);
+            rc = J2534Api.PassThruConnect(devId, proto, 0, baud,  ch);
             if (rc != 0)
             {
                 Log($"PassThruConnect failed: {rc}");
@@ -278,13 +278,13 @@ namespace Msd81J2534Flasher
         // NOTE: Many J2534 libraries expose functions with same names. DllImport below calls the dll by name.
         // Make sure the dll name matches the file you loaded above or is in PATH.
         [DllImport("YourJ2534.dll", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
-        public static extern int PassThruOpen(IntPtr pName, ref int DeviceID);
+        public static extern int PassThruOpen(IntPtr pName,  int DeviceID);
 
         [DllImport("YourJ2534.dll", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
         public static extern int PassThruClose(int DeviceID);
 
         [DllImport("YourJ2534.dll", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
-        public static extern int PassThruConnect(int DeviceID, uint ProtocolID, uint Flags, uint BaudRate, ref int ChannelID);
+        public static extern int PassThruConnect(int DeviceID, uint ProtocolID, uint Flags, uint BaudRate,  int ChannelID);
 
         [DllImport("YourJ2534.dll", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
         public static extern int PassThruDisconnect(int ChannelID);
@@ -303,14 +303,14 @@ namespace Msd81J2534Flasher
         }
 
         [DllImport("YourJ2534.dll", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
-        public static extern int PassThruWriteMsgs(int ChannelID, ref PASSTHRU_MSG pMsg, ref uint pNumMsgs, uint Timeout);
+        public static extern int PassThruWriteMsgs(int ChannelID,  PASSTHRU_MSG pMsg,  uint pNumMsgs, uint Timeout);
 
         [DllImport("YourJ2534.dll", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
-        public static extern int PassThruReadMsgs(int ChannelID, ref PASSTHRU_MSG pMsg, ref uint pNumMsgs, uint Timeout);
+        public static extern int PassThruReadMsgs(int ChannelID,  PASSTHRU_MSG pMsg,  uint pNumMsgs, uint Timeout);
 
         // Helper wrappers to adapt signatures for delegates used by IsoTp earlier
-        public static int WriteMsgsWrapper(int chan, ref PASSTHRU_MSG msg, ref uint n, uint t) => PassThruWriteMsgs(chan, ref msg, ref n, t);
-        public static int ReadMsgsWrapper(int chan, ref PASSTHRU_MSG msg, ref uint n, uint t) => PassThruReadMsgs(chan, ref msg, ref n, t);
+        public static int WriteMsgsWrapper(int chan,  PASSTHRU_MSG msg,  uint n, uint t) => PassThruWriteMsgs(chan,  msg,  n, t);
+        public static int ReadMsgsWrapper(int chan,  PASSTHRU_MSG msg,  uint n, uint t) => PassThruReadMsgs(chan,  msg,  n, t);
     }
 
     // ---------- IsoTP + helper flasher (simplified) ----------
@@ -319,13 +319,13 @@ namespace Msd81J2534Flasher
         private readonly int channelId;
         private readonly uint txId;
         private readonly uint rxId;
-        private readonly Func<int, ref J2534Api.PASSTHRU_MSG, ref uint, uint, int> writeMsgs;
-        private readonly Func<int, ref J2534Api.PASSTHRU_MSG, ref uint, uint, int> readMsgs;
+        private readonly Func<int,  J2534Api.PASSTHRU_MSG,  uint, uint, int> writeMsgs;
+        private readonly Func<int,  J2534Api.PASSTHRU_MSG,  uint, uint, int> readMsgs;
         private readonly int readTimeoutMs = 2000;
 
         public IsoTp(int channelId, uint txId, uint rxId,
-            Func<int, ref J2534Api.PASSTHRU_MSG, ref uint, uint, int> writeMsgs,
-            Func<int, ref J2534Api.PASSTHRU_MSG, ref uint, uint, int> readMsgs)
+            Func<int,  J2534Api.PASSTHRU_MSG,  uint, uint, int> writeMsgs,
+            Func<int,  J2534Api.PASSTHRU_MSG,  uint, uint, int> readMsgs)
         {
             this.channelId = channelId;
             this.txId = txId;
@@ -396,7 +396,7 @@ namespace Msd81J2534Flasher
             msg.Data[3] = (byte)(txId & 0xFF);
             Array.Copy(data8, 0, msg.Data, 4, data8.Length);
             uint num = 1;
-            int rc = writeMsgs(channelId, ref msg, ref num, 1000);
+            int rc = writeMsgs(channelId,  msg,  num, 1000);
             if (rc != 0) throw new Exception("PassThruWriteMsgs rc=" + rc);
         }
 
@@ -470,7 +470,7 @@ namespace Msd81J2534Flasher
         {
             var rx = new J2534Api.PASSTHRU_MSG { Data = new byte[4128] };
             uint num = 1;
-            int rc = readMsgs(channelId, ref rx, ref num, (uint)readTimeoutMs);
+            int rc = readMsgs(channelId,  rx,  num, (uint)readTimeoutMs);
             if (rc != 0 || num == 0) return null;
             // We packed payload at Data[4..11] on write — some drivers return similarly.
             // Try to extract payload: if DataSize >= 8 and Data[4..] not zeros, return those 8 bytes.
@@ -487,15 +487,15 @@ namespace Msd81J2534Flasher
         private readonly int chanId;
         private readonly uint txId;
         private readonly uint rxId;
-        private readonly Func<int, ref J2534Api.PASSTHRU_MSG, ref uint, uint, int> writeFunc;
-        private readonly Func<int, ref J2534Api.PASSTHRU_MSG, ref uint, uint, int> readFunc;
+        private readonly Func<int,  J2534Api.PASSTHRU_MSG,  uint, uint, int> writeFunc;
+        private readonly Func<int,  J2534Api.PASSTHRU_MSG,  uint, uint, int> readFunc;
         private readonly Action<string> logger;
 
         private IsoTp isotp;
 
         public Msd81Flasher(int devId, int chanId, uint txId, uint rxId,
-            Func<int, ref J2534Api.PASSTHRU_MSG, ref uint, uint, int> writeFunc,
-            Func<int, ref J2534Api.PASSTHRU_MSG, ref uint, uint, int> readFunc,
+            Func<int,  J2534Api.PASSTHRU_MSG,  uint, uint, int> writeFunc,
+            Func<int,  J2534Api.PASSTHRU_MSG,  uint, uint, int> readFunc,
             Action<string> logger)
         {
             this.devId = devId; this.chanId = chanId; this.txId = txId; this.rxId = rxId;
